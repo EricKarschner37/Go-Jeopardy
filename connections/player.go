@@ -21,6 +21,7 @@ func (player *Player) Buzz() {
 }
 
 func (player *Player) Wager(amount int) {
+  player.game.Wager(amount)
 }
 
 func registerPlayer(name string, conn *websocket.Conn) *Player {

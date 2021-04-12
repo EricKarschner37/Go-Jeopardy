@@ -16,9 +16,9 @@ type JeopardyRound struct {
 
 type Game struct {
   Host *websocket.Conn
+  Board *websocket.Conn
   SingleJeopardy *JeopardyRound
   DoubleJeopardy *JeopardyRound
-  CurrentRound *JeopardyRound
   state map[string]interface{}
 }
 
@@ -30,6 +30,14 @@ func (game *Game) sendState() {
   stateJson, _ := json.Marshal(game.state)
   for _, p := range game.state["players"].(map[string]*Player) {
     p.Conn.WriteMessage(websocket.TextMessage, []byte(stateJson))
+  }
+
+  if game.Host != nil {
+    game.Host.WriteMessage(websocket.TextMessage, []byte(stateJson))
+  }
+
+  if game.Board != nil {
+    game.Board.WriteMessage(websocket.TextMessage, []byte(stateJson))
   }
 }
 
@@ -54,15 +62,24 @@ func (game *Game) Buzz(player *Player) {
 }
 
 func (game *Game) Reveal(row int, col int) {
-  if (strings.Contains(game.SingleJeopardy.Clues[row][col], "Daily Double: ")) {
+  var round *JeopardyRound
+  if (game.state["double"].(bool)) {
+    round = game.DoubleJeopardy
+    game.setState("cost", (row + 1) * 400)
+  } else {
+    round = game.SingleJeopardy
+    game.setState("cost", (row + 1) * 200)
+  }
+
+  if (strings.Contains(round.Clues[row][col], "Daily Double: ")) {
     game.setState("name", "daily_double")
   } else {
     game.setState("name", "clue")
   }
 
   game.setState("buzzers_open", false)
-  game.setState("response", game.SingleJeopardy.Responses[row][col])
-  game.setState("clue", game.SingleJeopardy.Clues[row][col])
+  game.setState("response", round.Responses[row][col])
+  game.setState("clue", round.Clues[row][col])
 }
 
 func (game *Game) OpenBuzzers() {
@@ -101,6 +118,10 @@ func (game *Game) ShowResponse() {
   if (!game.state["buzzers_open"].(bool)) {
     game.setState("name", "response")
   }
+}
+
+func (game *Game) ShowBoard() {
+  game.setState("name", "board")
 }
 
 func readCSV(filename string) {
@@ -144,11 +165,12 @@ func readCSV(filename string) {
 //  - daily_double
 //  - board
 
-func StartGame() {
-  readCSV("games/6989.csv")
-  CurrentGame.CurrentRound = CurrentGame.SingleJeopardy
+func StartGame(num int) {
+  file := fmt.Sprintf("games/%d.csv", num)
+  readCSV(file)
   CurrentGame.state = map[string]interface{}{
-    "buzzers_open": true,
+    "message": "state",
+    "buzzers_open": false,
     "selected_player": "",
     "cost": 0,
     "clue": "",

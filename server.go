@@ -13,9 +13,9 @@ func main() {
     return true
   }
 
-  http.HandleFunc("/buzzer", connections.AcceptPlayer)
-  http.HandleFunc("/buzzer/host", connections.AcceptHost)
-  connections.StartGame()
+  http.HandleFunc("/ws/buzzer", connections.AcceptPlayer)
+  http.HandleFunc("/ws/host", connections.AcceptHost)
+  http.HandleFunc("/ws/board", connections.AcceptBoard)
   err := http.ListenAndServe("0.0.0.0:8080", nil)
   if err != nil {
     fmt.Println(err)
