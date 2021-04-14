@@ -46,7 +46,22 @@ func (game *Game) setState(key string, value interface{}) {
   game.sendState()
 }
 
-func (game *Game) Wager(amount int) {
+func (game *Game) Wager(amount int, player string) {
+  var max int
+  bal := game.state["players"].(map[string]*Player)[player].Points
+  if game.state["double"].(bool) {
+    max = 2000
+  } else {
+	max = 1000
+  }
+
+  if bal > max {
+	max = bal
+  }
+
+  if amount > max {
+    return
+  }
   game.setState("cost", amount)
   game.setState("name", "clue")
   game.setState("buzzers_open", false)
@@ -61,7 +76,27 @@ func (game *Game) Buzz(player *Player) {
   }
 }
 
+func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
+  for n, p := range game.state["players"].(map[string]*Player) {
+    if n == name && p.Conn == nil {
+      p.Name = name
+	  return p
+	}
+  }
+
+  p := Player{
+	conn,
+	name,
+	0,
+	game,
+  }
+  game.state["players"].(map[string]*Player)[name] = &p
+  game.sendState()
+  return &p
+}
+
 func (game *Game) Reveal(row int, col int) {
+  fmt.Println("Revealing clue")
   var round *JeopardyRound
   if (game.state["double"].(bool)) {
     round = game.DoubleJeopardy
@@ -106,7 +141,7 @@ func (game *Game) ResponseCorrect(correct bool) {
 
 func (game *Game) ChoosePlayer(name string) {
   game.setState("selected_player", name)
-  game.setState("name", "wager")
+  game.setState("name", "daily_double")
 }
 
 func (game *Game) StartDouble() {

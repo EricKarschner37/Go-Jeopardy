@@ -12,8 +12,11 @@ func AcceptHost(w http.ResponseWriter, r *http.Request) {
 
   conn, err := Upgrader.Upgrade(w, r, nil)
   if err != nil {
-    CurrentGame.Host = conn
+	fmt.Println(err)
+	return
   }
+
+  CurrentGame.Host = conn
 
   Mu.Unlock()
 

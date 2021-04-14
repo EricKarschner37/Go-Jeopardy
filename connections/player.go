@@ -13,7 +13,7 @@ type Player struct {
   Conn *websocket.Conn
   Name string
   Points int
-  game Game
+  game *Game
 }
 
 func (player *Player) Buzz() {
@@ -21,28 +21,7 @@ func (player *Player) Buzz() {
 }
 
 func (player *Player) Wager(amount int) {
-  player.game.Wager(amount)
-}
-
-func registerPlayer(name string, conn *websocket.Conn) *Player {
-  for _, p := range CurrentGame.state["players"].(map[string]*Player) {
-    if p.Name == name && p.Conn != nil {
-      return nil
-    } else if p.Name == name {
-      p.Conn = conn
-      return p
-    }
-  }
-
-  p := Player {
-    conn,
-    name,
-    0,
-    CurrentGame,
-  }
-
-  CurrentGame.state["players"].(map[string]*Player)[name] = &p
-  return &p
+  player.game.Wager(amount, player.Name)
 }
 
 func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +37,7 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
   err = conn.ReadJSON(&resp)
   if err != nil {
     fmt.Println(err)
+	fmt.Println("Registering player")
     return
   }
 
@@ -65,7 +45,7 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
 
   if resp["request"] == "register" {
     Mu.Lock()
-    p = registerPlayer(resp["name"].(string), conn)
+    p = CurrentGame.AddPlayer(resp["name"].(string), conn)
     Mu.Unlock()
     fmt.Printf("Player %s registered\n", p.Name)
   }
@@ -82,7 +62,7 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
     case "buzz":
       p.Buzz()
     case "wager":
-      p.Wager(resp["amount"].(int))
+      p.Wager(int(resp["amount"].(float64)))
     }
     Mu.Unlock()
   }
