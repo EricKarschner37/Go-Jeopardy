@@ -2,8 +2,6 @@ package connections
 
 import "fmt"
 import "net/http"
-import "github.com/gorilla/websocket"
-import "encoding/json"
 
 func AcceptBoard(w http.ResponseWriter, r *http.Request) {
   if (CurrentGame.Board != nil) {
@@ -33,20 +31,7 @@ func AcceptBoard(w http.ResponseWriter, r *http.Request) {
     }
   }
 
-
-  categoriesMap := map[string]interface{} {
-    "message": "categories",
-  }
-
-  if CurrentGame.state["double"].(bool) {
-    categoriesMap["categories"] = CurrentGame.DoubleJeopardy.Categories
-  } else {
-    categoriesMap["categories"] = CurrentGame.SingleJeopardy.Categories
-  }
-
-  categoriesMsg, _ := json.Marshal(categoriesMap)
-
-  conn.WriteMessage(websocket.TextMessage, []byte(categoriesMsg))
+  CurrentGame.SendCategories()
 
   for {
     err = conn.ReadJSON(&resp)

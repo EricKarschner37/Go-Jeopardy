@@ -59,7 +59,7 @@ func (game *Game) Wager(amount int, player string) {
 	max = bal
   }
 
-  if amount > max {
+  if amount > max || amount < 5 {
     return
   }
   game.setState("cost", amount)
@@ -147,6 +147,7 @@ func (game *Game) ChoosePlayer(name string) {
 func (game *Game) StartDouble() {
   game.setState("double", true)
   game.setState("name", "board")
+  game.SendCategories()
 }
 
 func (game *Game) ShowResponse() {
@@ -157,6 +158,22 @@ func (game *Game) ShowResponse() {
 
 func (game *Game) ShowBoard() {
   game.setState("name", "board")
+}
+
+func (game *Game) SendCategories() {
+  categoriesMap := map[string]interface{} {
+    "message": "categories",
+  }
+
+  if game.state["double"].(bool) {
+    categoriesMap["categories"] = game.DoubleJeopardy.Categories
+  } else {
+    categoriesMap["categories"] = game.SingleJeopardy.Categories
+  }
+
+  categoriesMsg, _ := json.Marshal(categoriesMap)
+
+  game.Board.WriteMessage(websocket.TextMessage, []byte(categoriesMsg))
 }
 
 func readCSV(filename string) {
