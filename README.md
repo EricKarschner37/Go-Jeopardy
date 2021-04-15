@@ -9,4 +9,4 @@ Android app - https://github.com/EricKarschner37/JeopardyApp
 
 ### Overview
 
-This project uses the [gorilla](https://github.com/gorilla/websocket) module for Go to communiacte with the Jeopardy! server.
+This project uses the [gorilla](https://github.com/gorilla/websocket) module for Go to communicate with the Jeopardy! server.
