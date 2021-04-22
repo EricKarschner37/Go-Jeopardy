@@ -37,7 +37,6 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
   err = conn.ReadJSON(&resp)
   if err != nil {
     fmt.Println(err)
-	fmt.Println("Registering player")
     return
   }
 
@@ -54,6 +53,7 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
     err = conn.ReadJSON(&resp)
     if err != nil {
       fmt.Println(err)
+	  p.Conn = nil
       return
     }
 

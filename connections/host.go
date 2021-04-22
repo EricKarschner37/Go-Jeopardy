@@ -25,6 +25,7 @@ func AcceptHost(w http.ResponseWriter, r *http.Request) {
   for {
     err = conn.ReadJSON(&resp)
     if err != nil {
+	  CurrentGame.Host = nil
       fmt.Println(err)
       return
     }
