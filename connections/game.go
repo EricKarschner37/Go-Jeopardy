@@ -29,6 +29,9 @@ var CurrentGame Game
 func (game *Game) sendState() {
   stateJson, _ := json.Marshal(game.state)
   for _, p := range game.state["players"].(map[string]*Player) {
+	if (p.Conn == nil) {
+	  continue
+	}
     p.Conn.WriteMessage(websocket.TextMessage, []byte(stateJson))
   }
 
@@ -78,8 +81,10 @@ func (game *Game) Buzz(player *Player) {
 
 func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
   for n, p := range game.state["players"].(map[string]*Player) {
+	fmt.Println(p.Name)
     if n == name && p.Conn == nil {
-      p.Name = name
+      p.Conn = conn
+	  game.sendState()
 	  return p
 	}
   }

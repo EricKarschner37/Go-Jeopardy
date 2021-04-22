@@ -67,5 +67,4 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
     Mu.Unlock()
   }
 
-  conn.WriteMessage(websocket.TextMessage, []byte("{'message': 'connected'}"))
 }
