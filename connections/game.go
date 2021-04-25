@@ -19,16 +19,19 @@ type Game struct {
   Board *websocket.Conn
   SingleJeopardy *JeopardyRound
   DoubleJeopardy *JeopardyRound
-  state map[string]interface{}
+  Mu *sync.Mutex
+  state State
 }
 
-var Mu = &sync.Mutex{}
-
-var CurrentGame Game
 
 func (game *Game) sendState() {
-  stateJson, _ := json.Marshal(game.state)
-  for _, p := range game.state["players"].(map[string]*Player) {
+  stateJson, err := json.Marshal(&(game.state))
+  if err != nil {
+	fmt.Println(err)
+  }
+  fmt.Println("Sending: ", string(stateJson))
+  fmt.Println(game.state.Clue)
+  for _, p := range game.state.Players {
 	if (p.Conn == nil) {
 	  continue
 	}
@@ -44,15 +47,10 @@ func (game *Game) sendState() {
   }
 }
 
-func (game *Game) setState(key string, value interface{}) {
-  game.state[key] = value
-  game.sendState()
-}
-
 func (game *Game) Wager(amount int, player string) {
   var max int
-  bal := game.state["players"].(map[string]*Player)[player].Points
-  if game.state["double"].(bool) {
+  bal := game.state.Players[player].Points
+  if game.state.Double {
     max = 2000
   } else {
 	max = 1000
@@ -65,22 +63,24 @@ func (game *Game) Wager(amount int, player string) {
   if amount > max || amount < 5 {
     return
   }
-  game.setState("cost", amount)
-  game.setState("name", "clue")
-  game.setState("buzzers_open", false)
+  game.state.Cost = amount
+  game.state.Name = "clue"
+  game.state.Buzzers_open = false
+  game.sendState()
+
 }
 
 func (game *Game) Buzz(player *Player) {
-  if (game.state["buzzers_open"].(bool)) {
-    game.setState("buzzers_open", false)
-    game.setState("selected_player", player.Name)
+  if (game.state.Buzzers_open) {
+    game.state.Buzzers_open = false
+    game.state.Selected_player = player.Name
 
     fmt.Println("Player buzzed:", player.Name)
   }
 }
 
 func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
-  for n, p := range game.state["players"].(map[string]*Player) {
+  for n, p := range game.state.Players {
 	fmt.Println(p.Name)
     if n == name && p.Conn == nil {
       p.Conn = conn
@@ -95,7 +95,7 @@ func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
 	0,
 	game,
   }
-  game.state["players"].(map[string]*Player)[name] = &p
+  game.state.Players[name] = &p
   game.sendState()
   return &p
 }
@@ -103,66 +103,74 @@ func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
 func (game *Game) Reveal(row int, col int) {
   fmt.Println("Revealing clue")
   var round *JeopardyRound
-  if (game.state["double"].(bool)) {
+  if (game.state.Double) {
     round = game.DoubleJeopardy
-    game.setState("cost", (row + 1) * 400)
+    game.state.Cost = (row + 1) * 400
   } else {
     round = game.SingleJeopardy
-    game.setState("cost", (row + 1) * 200)
+    game.state.Cost = (row + 1) * 200
   }
 
   if (strings.Contains(round.Clues[row][col], "Daily Double: ")) {
-    game.setState("name", "daily_double")
+    game.state.Name = "daily_double"
   } else {
-    game.setState("name", "clue")
+    game.state.Name = "clue"
   }
 
-  game.setState("buzzers_open", false)
-  game.setState("response", round.Responses[row][col])
-  game.setState("clue", round.Clues[row][col])
+  game.state.Buzzers_open = false
+  game.state.Response = round.Responses[row][col]
+  game.state.Clue = round.Clues[row][col]
+  game.sendState()
 }
 
 func (game *Game) OpenBuzzers() {
-  game.setState("buzzers_open", true)
+  game.state.Buzzers_open = true
+  game.sendState()
 }
 
 func (game *Game) CloseBuzzers() {
-  game.setState("buzzers_open", false)
+  game.state.Buzzers_open = false
+  game.sendState()
 }
 
 func (game *Game) ResponseCorrect(correct bool) {
-  if player, ok := game.state["players"].(map[string]*Player)[game.state["selected_player"].(string)]; ok {
+  if player, ok := game.state.Players[game.state.Selected_player]; ok {
     if (correct) {
-      player.Points += game.state["cost"].(int)
-      game.setState("name", "response")
+      player.Points += game.state.Cost
+      game.state.Name = "response"
     } else {
-      player.Points -= game.state["cost"].(int)
-      game.setState("buzzers_open", true)
+      player.Points -= game.state.Cost
+      game.state.Buzzers_open = true
     }
 
-    game.setState("selected_player", "")
+    game.state.Selected_player = ""
   }
+  game.sendState()
 }
 
 func (game *Game) ChoosePlayer(name string) {
-  game.setState("selected_player", name)
-  game.setState("name", "daily_double")
+  game.state.Selected_player = name
+  game.state.Name = "daily_double"
+  game.sendState()
 }
 
 func (game *Game) StartDouble() {
-  game.setState("double", true)
-  game.setState("name", "board")
+  game.state.Double = true
+  game.state.Name = "board"
   game.SendCategories()
+  game.sendState()
 }
 
 func (game *Game) ShowResponse() {
-  if (!game.state["buzzers_open"].(bool)) {
-    game.setState("name", "response")
+  if (!game.state.Buzzers_open) {
+    game.state.Name = "response"
   }
+  game.sendState()
 }
 
 func (game *Game) ShowBoard() {
-  game.setState("name", "board")
+  game.state.Name = "board"
+  game.sendState()
 }
 
 func (game *Game) SendCategories() {
@@ -170,7 +178,7 @@ func (game *Game) SendCategories() {
     "message": "categories",
   }
 
-  if game.state["double"].(bool) {
+  if game.state.Double {
     categoriesMap["categories"] = game.DoubleJeopardy.Categories
   } else {
     categoriesMap["categories"] = game.SingleJeopardy.Categories
@@ -181,39 +189,36 @@ func (game *Game) SendCategories() {
   game.Board.WriteMessage(websocket.TextMessage, []byte(categoriesMsg))
 }
 
-func readCSV(filename string) {
-  file, err := os.Open(filename)
+func readRound(cluesFile string, responsesFile string, round *JeopardyRound) {
+  file, err := os.Open(cluesFile)
   if err != nil {
     fmt.Println(err)
   }
 
   r := csv.NewReader(file)
 
-  var single JeopardyRound
+
   record, err := r.Read()
-  copy(single.Categories[:], record)
+  copy(round.Categories[:], record)
+
   for i := 0; i < 5; i++ {
     record, err = r.Read()
-    copy(single.Clues[i][:], record)
-  }
-  for i := 0; i < 5; i++ {
-    record, err = r.Read()
-    copy(single.Responses[i][:], record)
+    copy(round.Clues[i][:], record)
   }
 
-  var double JeopardyRound
-  record, err = r.Read()
-  copy(double.Categories[:], record)
+
+  file, err = os.Open(responsesFile)
+  if err != nil {
+	fmt.Println(err)
+  }
+
+  r = csv.NewReader(file)
+  r.Read()
+
   for i := 0; i < 5; i++ {
     record, err = r.Read()
-    copy(double.Clues[i][:], record)
+    copy(round.Responses[i][:], record)
   }
-  for i := 0; i < 5; i++ {
-    record, err = r.Read()
-    copy(double.Responses[i][:], record)
-  }
-  CurrentGame.SingleJeopardy = &single
-  CurrentGame.DoubleJeopardy = &double
 }
 
 // Valid state names:
@@ -222,18 +227,38 @@ func readCSV(filename string) {
 //  - daily_double
 //  - board
 
-func StartGame(num int) {
-  file := fmt.Sprintf("games/%d.csv", num)
-  readCSV(file)
-  CurrentGame.state = map[string]interface{}{
-    "message": "state",
-    "buzzers_open": false,
-    "selected_player": "",
-    "cost": 0,
-    "clue": "",
-    "response": "",
-    "players": make(map[string]*Player),
-    "name": "board",
-    "double": false,
+func (game *Game) StartGame(num int) {
+  dir := fmt.Sprintf("games/%d", num)
+
+  game.SingleJeopardy = &JeopardyRound{}
+  game.DoubleJeopardy = &JeopardyRound{}
+  game.Mu = &sync.Mutex{}
+
+  readRound(fmt.Sprintf("%s/single_clues.csv", dir), fmt.Sprintf("%s/single_responses.csv", dir), game.SingleJeopardy)
+
+  readRound(fmt.Sprintf("%s/double_clues.csv", dir), fmt.Sprintf("%s/double_responses.csv", dir), game.DoubleJeopardy)
+
+  game.state = State {
+	"state",					//message
+    false,						//buzzers_open
+    "",							//selected_player
+    0,							//cost
+    "",							//clue
+    "",							//response
+    make(map[string]*Player),	//players
+    "board",					//name
+    false,						//double
   }
+}
+
+type State struct {
+  Message string				`json:"message"`
+  Buzzers_open bool				`json:"buzzers_open"`
+  Selected_player string		`json:"selected_player"`
+  Cost int						`json:"cost"`
+  Clue string					`json:"clue"`
+  Response string				`json:"response"`
+  Players map[string]*Player	`json:"players"`
+  Name string					`json:"name"`
+  Double bool					`json:"double"`
 }

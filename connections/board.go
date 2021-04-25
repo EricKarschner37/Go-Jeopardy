@@ -3,8 +3,8 @@ package connections
 import "fmt"
 import "net/http"
 
-func AcceptBoard(w http.ResponseWriter, r *http.Request) {
-  if (CurrentGame.Board != nil) {
+func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
+  if (game.Board != nil) {
     return
   }
 
@@ -17,21 +17,8 @@ func AcceptBoard(w http.ResponseWriter, r *http.Request) {
 
 
   resp := make(map[string]interface{})
-  CurrentGame.Board = conn
-
-  if (CurrentGame.SingleJeopardy == nil) {
-    err = conn.ReadJSON(&resp)
-    if err != nil {
-      fmt.Println(err)
-      return
-    }
-
-    if resp["request"] == "start_game" {
-      StartGame(int(resp["game_num"].(float64)))
-    }
-  }
-
-  CurrentGame.SendCategories()
+  game.Board = conn
+  game.SendCategories()
 
   for {
     err = conn.ReadJSON(&resp)
@@ -40,20 +27,20 @@ func AcceptBoard(w http.ResponseWriter, r *http.Request) {
       return
     }
 
-    Mu.Lock()
+    game.Mu.Lock()
     switch resp["request"] {
     case "reveal":
       row := int(resp["row"].(float64))
       col := int(resp["col"].(float64))
       fmt.Printf("Board asking to reveal: %d, %d\n", row, col)
-      CurrentGame.Reveal(row, col)
+      game.Reveal(row, col)
     case "start_double":
-      CurrentGame.StartDouble()
+      game.StartDouble()
     case "response":
-      CurrentGame.ShowResponse()
+      game.ShowResponse()
     case "board":
-      CurrentGame.ShowBoard()
+      game.ShowBoard()
     }
-    Mu.Unlock()
+    game.Mu.Unlock()
   }
 }

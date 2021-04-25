@@ -3,10 +3,10 @@ package connections
 import "fmt"
 import "net/http"
 
-func AcceptHost(w http.ResponseWriter, r *http.Request) {
+func (game *Game) AcceptHost(w http.ResponseWriter, r *http.Request) {
   fmt.Println("Host initiating connection")
-  Mu.Lock()
-  if CurrentGame.Host != nil {
+  game.Mu.Lock()
+  if game.Host != nil {
     return
   }
 
@@ -16,33 +16,33 @@ func AcceptHost(w http.ResponseWriter, r *http.Request) {
 	return
   }
 
-  CurrentGame.Host = conn
+  game.Host = conn
 
-  Mu.Unlock()
+  game.Mu.Unlock()
 
   resp := make(map[string]interface{})
 
   for {
     err = conn.ReadJSON(&resp)
     if err != nil {
-	  CurrentGame.Host = nil
+	  game.Host = nil
       fmt.Println(err)
       return
     }
 
-    Mu.Lock()
+    game.Mu.Lock()
 
     switch (resp["request"]) {
     case "open":
-      CurrentGame.OpenBuzzers()
+      game.OpenBuzzers()
     case "close":
-      CurrentGame.CloseBuzzers()
+      game.CloseBuzzers()
     case "correct":
-      CurrentGame.ResponseCorrect(resp["correct"].(bool))
+      game.ResponseCorrect(resp["correct"].(bool))
     case "player":
-      CurrentGame.ChoosePlayer(resp["player"].(string))
+      game.ChoosePlayer(resp["player"].(string))
     }
 
-    Mu.Unlock()
+    game.Mu.Unlock()
   }
 }

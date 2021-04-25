@@ -24,7 +24,7 @@ func (player *Player) Wager(amount int) {
   player.game.Wager(amount, player.Name)
 }
 
-func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
+func (game *Game) AcceptPlayer(w http.ResponseWriter, r *http.Request) {
   fmt.Println("Client initiating connection...")
   conn, err := Upgrader.Upgrade(w, r, nil)
   if (err != nil) {
@@ -43,9 +43,9 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
   var p *Player
 
   if resp["request"] == "register" {
-    Mu.Lock()
-    p = CurrentGame.AddPlayer(resp["name"].(string), conn)
-    Mu.Unlock()
+    game.Mu.Lock()
+    p = game.AddPlayer(resp["name"].(string), conn)
+    game.Mu.Unlock()
     fmt.Printf("Player %s registered\n", p.Name)
   }
 
@@ -57,14 +57,13 @@ func AcceptPlayer(w http.ResponseWriter, r *http.Request) {
       return
     }
 
-    Mu.Lock()
+    game.Mu.Lock()
     switch resp["request"] {
     case "buzz":
       p.Buzz()
     case "wager":
       p.Wager(int(resp["amount"].(float64)))
     }
-    Mu.Unlock()
+    game.Mu.Unlock()
   }
-
 }
