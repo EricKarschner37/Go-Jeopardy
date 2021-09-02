@@ -51,6 +51,7 @@ func main() {
   })
 
   handler := cors.Default().Handler(mux)
+  fmt.Println("Listening on port 10001...")
   err := http.ListenAndServe("0.0.0.0:10001", handler)
   if err != nil {
     fmt.Println(err)
