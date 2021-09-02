@@ -6,6 +6,7 @@ import "os/exec"
 import "os"
 import "io"
 import "fmt"
+import "strconv"
 import "github.com/EricKarschner37/Go-Jeopardy/connections"
 
 func main() {
@@ -32,7 +33,10 @@ func main() {
 
     num := int(req["num"].(float64))
     if !gameExists(num) {
-      exec.Command(fmt.Sprintf("./get_game.py %d", num)).Run()
+	  fmt.Printf("Game %d does not exist, fetching...\n", num)
+	  if e := exec.Command("./get_game.py", strconv.Itoa(num)).Run(); e != nil {
+	    fmt.Println(e)
+	  }
     }
 
 	  var game connections.Game

@@ -76,6 +76,7 @@ func (game *Game) Buzz(player *Player) {
     game.state.Selected_player = player.Name
 
     fmt.Println("Player buzzed:", player.Name)
+	game.sendState()
   }
 }
 
