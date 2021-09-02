@@ -7,6 +7,7 @@ import "os"
 import "io"
 import "fmt"
 import "strconv"
+import "github.com/rs/cors"
 import "github.com/EricKarschner37/Go-Jeopardy/connections"
 
 func main() {
@@ -14,7 +15,9 @@ func main() {
     return true
   }
 
-  http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+  mux := http.NewServeMux()
+
+  mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
 	  if (r.Method != http.MethodPost) {
 	    http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	    return
@@ -42,12 +45,13 @@ func main() {
 	  var game connections.Game
 	  game.StartGame(num)
 
-	  http.HandleFunc("/ws/buzzer", game.AcceptPlayer)
-	  http.HandleFunc("/ws/host", game.AcceptHost)
-	  http.HandleFunc("/ws/board", game.AcceptBoard)
+	  mux.HandleFunc("/ws/buzzer", game.AcceptPlayer)
+	  mux.HandleFunc("/ws/host", game.AcceptHost)
+	  mux.HandleFunc("/ws/board", game.AcceptBoard)
   })
 
-  err := http.ListenAndServe("0.0.0.0:10001", nil)
+  handler := cors.Default().Handler(mux)
+  err := http.ListenAndServe("0.0.0.0:10001", handler)
   if err != nil {
     fmt.Println(err)
   }
