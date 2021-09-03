@@ -42,7 +42,7 @@ EXPOSE 10001
 # application can make use of. The value of environment
 # variables can also be set via parameters supplied
 # to the docker command on the command line.
-#ENV HTTP_PORT=8081
+ENV J_GAME_ROOT=games
 
 # Run
 CMD [ "/jeopardy" ]
