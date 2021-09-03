@@ -43,7 +43,7 @@ EXPOSE 10001
 # variables can also be set via parameters supplied
 # to the docker command on the command line.
 ENV J_GAME_ROOT=games
-RUN chmod g+w games -R
+RUN chmod ugo+w games -R
 
 # Run
 CMD [ "/jeopardy" ]
