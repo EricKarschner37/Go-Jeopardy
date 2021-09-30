@@ -20,6 +20,7 @@ type Game struct {
   SingleJeopardy *JeopardyRound
   DoubleJeopardy *JeopardyRound
   Mu *sync.Mutex
+  OnEnd func()
   state State
 }
 
@@ -250,6 +251,21 @@ func (game *Game) StartGame(num int) {
     "board",					//name
     false,						//double
   }
+}
+
+func (game *Game) endGame() {
+  if (game.Board != nil) {
+    game.Board.Close()
+  }
+  if (game.Host != nil) {
+	game.Host.Close()
+  }
+  for _, p := range game.state.Players {
+	if (p.Conn != nil) {
+      p.Conn.Close()
+	}
+  }
+  game.OnEnd()
 }
 
 type State struct {

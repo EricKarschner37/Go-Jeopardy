@@ -15,6 +15,9 @@ func main() {
     return true
   }
 
+  games := map[int]connections.Game{}
+  gameNum := 0
+
   mux := http.NewServeMux()
 
   mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
@@ -42,12 +45,22 @@ func main() {
 	  }
     }
 
-	  var game connections.Game
-	  game.StartGame(num)
+	var game connections.Game
+	game.StartGame(num)
 
-	  mux.HandleFunc("/ws/buzzer", game.AcceptPlayer)
-	  mux.HandleFunc("/ws/host", game.AcceptHost)
-	  mux.HandleFunc("/ws/board", game.AcceptBoard)
+	mux.HandleFunc(fmt.Sprintf("/ws/%d/buzzer", gameNum), game.AcceptPlayer)
+	mux.HandleFunc(fmt.Sprintf("/ws/%d/host", gameNum), game.AcceptHost)
+	mux.HandleFunc(fmt.Sprintf("/ws/%d/board", gameNum), game.AcceptBoard)
+
+	game.OnEnd = func() {
+	  delete(games, gameNum)
+	}
+
+	games[gameNum] = game
+	fmt.Fprintf(w, "{\"gameNum\": %d}", gameNum)
+
+	gameNum++
+	return
   })
 
   handler := cors.Default().Handler(mux)
