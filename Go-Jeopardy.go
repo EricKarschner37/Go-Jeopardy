@@ -20,7 +20,7 @@ func main() {
 
   mux := http.NewServeMux()
 
-  mux.HandleFunc("/games", func(w http.ResponseWriter, r *http.Request) {
+  mux.HandleFunc("/api/games", func(w http.ResponseWriter, r *http.Request) {
 	if (r.Method != http.MethodGet) {
 	  http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	  return
@@ -42,7 +42,7 @@ func main() {
 	return
   })
 
-  mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+  mux.HandleFunc("/api/start", func(w http.ResponseWriter, r *http.Request) {
 	  if (r.Method != http.MethodPost) {
 	    http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	    return
