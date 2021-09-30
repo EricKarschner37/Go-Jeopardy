@@ -20,6 +20,28 @@ func main() {
 
   mux := http.NewServeMux()
 
+  mux.HandleFunc("/games", func(w http.ResponseWriter, r *http.Request) {
+	if (r.Method != http.MethodGet) {
+	  http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	  return
+	}
+
+	res := "["
+	i := 0
+	for num := range games {
+	  res = res + strconv.Itoa(num)
+	  if i < len(games)-1 {
+	    res = res + ", "
+	  }
+	  i++
+	}
+	res = res + "]"
+	fmt.Println(res)
+	fmt.Fprint(w, res)
+
+	return
+  })
+
   mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
 	  if (r.Method != http.MethodPost) {
 	    http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
