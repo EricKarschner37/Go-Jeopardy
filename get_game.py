@@ -47,7 +47,7 @@ def get_from_url(url):
         wr = csv.writer(f)
         wr.writerow(double_cat)
         wr.writerows(double_answers)
-    with open(f"{root}/double_final.csv", 'w') as f:
+    with open(f"{root}/final.csv", 'w') as f:
         wr = csv.writer(f)
         wr.writerow([final_cat])
         wr.writerow([final_clue])
