@@ -14,11 +14,20 @@ type JeopardyRound struct {
   Responses [5][6]string
 }
 
+type FinalRound struct {
+  Category string
+  Clue string
+  Response string
+  Wagers map[string]int
+  PlayerResponses map[string]string
+}
+
 type Game struct {
   Host *websocket.Conn
   Board *websocket.Conn
   SingleJeopardy *JeopardyRound
   DoubleJeopardy *JeopardyRound
+  FinalJeopardy *FinalRound
   Mu *sync.Mutex
   state State
 }
@@ -32,9 +41,9 @@ func (game *Game) sendState() {
   fmt.Println("Sending: ", string(stateJson))
   fmt.Println(game.state.Clue)
   for _, p := range game.state.Players {
-	if (p.Conn == nil) {
-	  continue
-	}
+	  if (p.Conn == nil) {
+	    continue
+	  }
     p.Conn.WriteMessage(websocket.TextMessage, []byte(stateJson))
   }
 
@@ -47,27 +56,81 @@ func (game *Game) sendState() {
   }
 }
 
+func (game *Game) FinalResponse(player string, response string) {
+  if response == "" || !game.state.Final {
+    return
+  }
+  game.FinalJeopardy.PlayerResponses[player] = response
+  all_responses := true 
+  for _, r := range game.FinalJeopardy.PlayerResponses {
+    if r == "" {
+      all_responses = false
+      break
+    }
+  }
+  if all_responses {
+    game.evaluateFinalResponses()
+  }
+}
+
+func (game *Game) evaluateFinalResponses() {
+  player := ""
+  for p, r := range game.FinalJeopardy.PlayerResponses {
+    if r != "" {
+      player = p
+      break
+    }
+  }
+  game.state.Selected_player = player
+  if player == "" {
+    game.state.Name = "complete"
+  } else {
+    game.state.Name = "buzzed"
+    game.state.Response = fmt.Sprintf("%s's response: %s\nCorrect response: %s", player, game.FinalJeopardy.PlayerResponses[player], game.FinalJeopardy.Response)
+    game.state.Cost = game.FinalJeopardy.Wagers[player]
+    game.sendState()
+  }
+}
+
 func (game *Game) Wager(amount int, player string) {
   var max int
   bal := game.state.Players[player].Points
   if game.state.Double {
     max = 2000
+  } else if game.state.Final {
+    max = 3000
   } else {
-	max = 1000
+	  max = 1000
   }
 
   if bal > max {
-	max = bal
+	  max = bal
   }
 
   if amount > max || amount < 5 {
     return
   }
+
+  if game.state.Final {
+    game.FinalJeopardy.Wagers[player] = amount
+    all_wagered := true
+    for _, b := range game.FinalJeopardy.Wagers {
+      if b == 0 {
+        all_wagered = false
+        break
+      }
+    }
+    if all_wagered {
+      game.state.Name = "final_clue"
+      game.sendState()
+    }
+    return
+  }
+
   game.state.Cost = amount
   game.state.Name = "clue"
   game.state.Buzzers_open = false
   game.sendState()
-
 }
 
 func (game *Game) Buzz(player *Player) {
@@ -76,7 +139,7 @@ func (game *Game) Buzz(player *Player) {
     game.state.Selected_player = player.Name
 
     fmt.Println("Player buzzed:", player.Name)
-	game.sendState()
+	  game.sendState()
   }
 }
 
@@ -91,10 +154,10 @@ func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
   }
 
   p := Player{
-	conn,
-	name,
-	0,
-	game,
+	  conn,
+	  name,
+	  0,
+	  game,
   }
   game.state.Players[name] = &p
   game.sendState()
@@ -138,10 +201,18 @@ func (game *Game) ResponseCorrect(correct bool) {
   if player, ok := game.state.Players[game.state.Selected_player]; ok {
     if (correct) {
       player.Points += game.state.Cost
-      game.state.Name = "response"
+      if game.state.Final {
+        game.evaluateFinalResponses()
+      } else {
+        game.state.Name = "response"
+      }
     } else {
       player.Points -= game.state.Cost
-      game.state.Buzzers_open = true
+      if game.state.Final {
+        game.evaluateFinalResponses()
+      } else {
+        game.state.Buzzers_open = true
+      }
     }
 
     game.state.Selected_player = ""
@@ -159,6 +230,14 @@ func (game *Game) StartDouble() {
   game.state.Double = true
   game.state.Name = "board"
   game.SendCategories()
+  game.sendState()
+}
+
+func (game *Game) StartFinal() {
+  game.state.Double = false
+  game.state.Final = true
+  game.state.Name = "final"
+  game.state.Category = game.FinalJeopardy.Category
   game.sendState()
 }
 
@@ -188,6 +267,32 @@ func (game *Game) SendCategories() {
   categoriesMsg, _ := json.Marshal(categoriesMap)
 
   game.Board.WriteMessage(websocket.TextMessage, []byte(categoriesMsg))
+}
+
+func readFinal(finalFile string, final *FinalRound) {
+  file, err := os.Open(finalFile)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  r := csv.NewReader(file)
+  record, err := r.Read()
+  if err != nil {
+    fmt.Println(err)
+  }
+  final.Category = record[0]
+
+  record, err = r.Read()
+  if err != nil {
+    fmt.Println(err)
+  }
+  final.Clue = record[0]
+
+  record, err = r.Read()
+  if err != nil {
+    fmt.Println(err)
+  }
+  final.Response= record[0]
 }
 
 func readRound(cluesFile string, responsesFile string, round *JeopardyRound) {
@@ -240,16 +345,18 @@ func (game *Game) StartGame(num int) {
   readRound(fmt.Sprintf("%s/double_clues.csv", dir), fmt.Sprintf("%s/double_responses.csv", dir), game.DoubleJeopardy)
 
   game.state = State {
-	"state",					//message
+	  "state",					//message
     false,						//buzzers_open
-    "",							//selected_player
-    0,							//cost
-    "",							//clue
-    "",							//response
+    "",							  //selected_player
+    0,							  //cost
+    "",              //category
+    "",							  //clue
+    "",							  //response
     make(map[string]*Player),	//players
     "board",					//name
     false,						//double
-  }
+    false,            //final
+  } 
 }
 
 func (game *Game) EndGame() {
@@ -257,10 +364,10 @@ func (game *Game) EndGame() {
     game.Board.Close()
   }
   if (game.Host != nil) {
-	game.Host.Close()
+	  game.Host.Close()
   }
   for _, p := range game.state.Players {
-	if (p.Conn != nil) {
+	  if (p.Conn != nil) {
       p.Conn.Close()
 	  }
   }
@@ -271,9 +378,11 @@ type State struct {
   Buzzers_open bool				`json:"buzzers_open"`
   Selected_player string		`json:"selected_player"`
   Cost int						`json:"cost"`
+  Category string     `json:"category"`
   Clue string					`json:"clue"`
   Response string				`json:"response"`
   Players map[string]*Player	`json:"players"`
   Name string					`json:"name"`
   Double bool					`json:"double"`
+  Final bool          `json:"final"`
 }

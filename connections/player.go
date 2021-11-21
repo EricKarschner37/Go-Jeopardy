@@ -24,6 +24,10 @@ func (player *Player) Wager(amount int) {
   player.game.Wager(amount, player.Name)
 }
 
+func (player *Player) Response(response string) {
+  player.game.FinalResponse(player.Name, response)
+}
+
 func (game *Game) AcceptPlayer(w http.ResponseWriter, r *http.Request) {
   fmt.Println("Client initiating connection...")
   conn, err := Upgrader.Upgrade(w, r, nil)
@@ -63,6 +67,8 @@ func (game *Game) AcceptPlayer(w http.ResponseWriter, r *http.Request) {
       p.Buzz()
     case "wager":
       p.Wager(int(resp["amount"].(float64)))
+    case "response":
+      p.Response(resp["response"].(string))
     }
     game.Mu.Unlock()
   }

@@ -15,7 +15,6 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-
   resp := make(map[string]interface{})
   game.Board = conn
   game.SendCategories()
@@ -36,6 +35,8 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
       game.Reveal(row, col)
     case "start_double":
       game.StartDouble()
+    case "start_final":
+      game.StartFinal()
     case "response":
       game.ShowResponse()
     case "board":

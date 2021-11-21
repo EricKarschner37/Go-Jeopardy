@@ -86,24 +86,24 @@ func main() {
 
     num := int(req["num"].(float64))
     if !gameExists(num) {
-	  fmt.Printf("Game %d does not exist, fetching...\n", num)
-	  if e := exec.Command("./get_game.py", strconv.Itoa(num)).Run(); e != nil {
-	    fmt.Println(e)
-	  }
+	    fmt.Printf("Game %d does not exist, fetching...\n", num)
+	    if e := exec.Command("./get_game.py", strconv.Itoa(num)).Run(); e != nil {
+	      fmt.Println(e)
+	    }
     }
 
-	var game connections.Game
-	game.StartGame(num)
+	  var game connections.Game
+	  game.StartGame(num)
 
-	mux.HandleFunc(fmt.Sprintf("/ws/%d/buzzer", gameNum), game.AcceptPlayer)
-	mux.HandleFunc(fmt.Sprintf("/ws/%d/host", gameNum), game.AcceptHost)
-	mux.HandleFunc(fmt.Sprintf("/ws/%d/board", gameNum), game.AcceptBoard)
+	  mux.HandleFunc(fmt.Sprintf("/ws/%d/buzzer", gameNum), game.AcceptPlayer)
+	  mux.HandleFunc(fmt.Sprintf("/ws/%d/host", gameNum), game.AcceptHost)
+	  mux.HandleFunc(fmt.Sprintf("/ws/%d/board", gameNum), game.AcceptBoard)
 
-	games[gameNum] = game
-	fmt.Fprintf(w, "{\"gameNum\": %d}", gameNum)
+	  games[gameNum] = game
+	  fmt.Fprintf(w, "{\"gameNum\": %d}", gameNum)
 
-	gameNum++
-	return
+	  gameNum++
+	  return
   })
 
   handler := cors.Default().Handler(mux)
@@ -128,6 +128,9 @@ func gameExists(num int) bool {
     return false
   }
   if _, err := os.Stat(fmt.Sprintf("games/%d/double_responses.csv", num)); os.IsNotExist(err) {
+    return false
+  }
+  if _, err := os.Stat(fmt.Sprintf("games/%d/final_responses.csv", num)); os.IsNotExist(err) {
     return false
   }
   return true
