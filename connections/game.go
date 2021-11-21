@@ -85,7 +85,7 @@ func (game *Game) evaluateFinalResponses() {
   if player == "" {
     game.state.Name = "complete"
   } else {
-    game.state.Name = "buzzed"
+    game.state.Name = "clue"
     game.state.Response = fmt.Sprintf("%s's response: %s\nCorrect response: %s", player, game.FinalJeopardy.PlayerResponses[player], game.FinalJeopardy.Response)
     game.state.Cost = game.FinalJeopardy.Wagers[player]
     game.sendState()
