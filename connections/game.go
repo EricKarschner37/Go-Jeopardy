@@ -339,6 +339,8 @@ func (game *Game) StartGame(num int) {
   game.SingleJeopardy = &JeopardyRound{}
   game.DoubleJeopardy = &JeopardyRound{}
   game.FinalJeopardy = &FinalRound{}
+  game.FinalJeopardy.Wagers = make(map[string]int)
+  game.FinalJeopardy.PlayerResponses = make(map[string]string)
   game.Mu = &sync.Mutex{}
 
   readRound(fmt.Sprintf("%s/single_clues.csv", dir), fmt.Sprintf("%s/single_responses.csv", dir), game.SingleJeopardy)
