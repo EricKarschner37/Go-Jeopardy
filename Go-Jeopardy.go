@@ -42,6 +42,31 @@ func main() {
 	return
   })
 
+  mux.HandleFunc("/api/end", func(w http.ResponseWriter, r *http.Request) {
+    if (r.Method != http.MethodPost) {
+	    http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	    return
+	  }
+
+    defer r.Body.Close()
+	  body, err := io.ReadAll(r.Body)
+	  if err != nil {
+	    fmt.Println(err)
+	  }
+	  var req map[string]interface{}
+	  err = json.Unmarshal(body, &req)
+	  if err != nil {
+	    fmt.Println(err)
+	  }
+
+    num := int(req["num"].(float64))
+    game := games[num]
+    game.EndGame()
+    delete(games, num)
+    fmt.Println("games:", games)
+    fmt.Printf("Game %d ended\n", num)
+  })
+
   mux.HandleFunc("/api/start", func(w http.ResponseWriter, r *http.Request) {
 	  if (r.Method != http.MethodPost) {
 	    http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -73,10 +98,6 @@ func main() {
 	mux.HandleFunc(fmt.Sprintf("/ws/%d/buzzer", gameNum), game.AcceptPlayer)
 	mux.HandleFunc(fmt.Sprintf("/ws/%d/host", gameNum), game.AcceptHost)
 	mux.HandleFunc(fmt.Sprintf("/ws/%d/board", gameNum), game.AcceptBoard)
-
-	game.OnEnd = func() {
-	  delete(games, gameNum)
-	}
 
 	games[gameNum] = game
 	fmt.Fprintf(w, "{\"gameNum\": %d}", gameNum)
