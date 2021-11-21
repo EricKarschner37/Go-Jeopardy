@@ -338,11 +338,14 @@ func (game *Game) StartGame(num int) {
 
   game.SingleJeopardy = &JeopardyRound{}
   game.DoubleJeopardy = &JeopardyRound{}
+  game.FinalJeopardy = &FinalRound{}
   game.Mu = &sync.Mutex{}
 
   readRound(fmt.Sprintf("%s/single_clues.csv", dir), fmt.Sprintf("%s/single_responses.csv", dir), game.SingleJeopardy)
 
   readRound(fmt.Sprintf("%s/double_clues.csv", dir), fmt.Sprintf("%s/double_responses.csv", dir), game.DoubleJeopardy)
+
+  readFinal(fmt.Sprintf("%s/final.csv", dir), game.FinalJeopardy)
 
   game.state = State {
 	  "state",					//message

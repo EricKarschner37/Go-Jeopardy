@@ -36,7 +36,8 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
     case "start_double":
       game.StartDouble()
     case "start_final":
-      fmt.Printf("Starting final...")
+      fmt.Printf("Starting final... State: %s\n", game.state.Name)
+      game.StartFinal()
     case "response":
       game.ShowResponse()
     case "board":
