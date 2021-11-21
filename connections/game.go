@@ -122,6 +122,8 @@ func (game *Game) Wager(amount int, player string) {
     }
     if all_wagered {
       game.state.Name = "final_clue"
+      game.state.Clue = game.FinalJeopardy.Clue
+      game.state.Response = game.FinalJeopardy.Response
       game.sendState()
     }
     return
