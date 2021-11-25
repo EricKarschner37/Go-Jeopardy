@@ -42,6 +42,8 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
       game.ShowResponse()
     case "board":
       game.ShowBoard()
+    case "remove":
+      game.RemovePlayer(resp["name"].(string))
     }
     game.Mu.Unlock()
   }

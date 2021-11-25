@@ -260,6 +260,11 @@ func (game *Game) ShowBoard() {
   game.sendState()
 }
 
+func (game *Game) RemovePlayer(name string) {
+  delete(game.state.Players, name)
+  game.sendState()
+}
+
 func (game *Game) SendCategories() {
   categoriesMap := map[string]interface{} {
     "message": "categories",
