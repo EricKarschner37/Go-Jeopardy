@@ -240,6 +240,11 @@ func (game *Game) StartFinal() {
   game.state.Final = true
   game.state.Name = "final"
   game.state.Category = game.FinalJeopardy.Category
+  for n, _ := range game.state.Players {
+    //TODO - do this on player added/removed
+    game.FinalJeopardy.PlayerResponses[n] = ""
+    game.FinalJeopardy.Wagers[n] = 0
+  }
   game.sendState()
 }
 
