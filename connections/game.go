@@ -81,7 +81,9 @@ func (game *Game) evaluateFinalResponses() {
       break
     }
   }
+
   game.state.Selected_player = player
+
   if player == "" {
     game.state.Name = "complete"
   } else {
@@ -201,6 +203,10 @@ func (game *Game) CloseBuzzers() {
 
 func (game *Game) ResponseCorrect(correct bool) {
   if player, ok := game.state.Players[game.state.Selected_player]; ok {
+    if game.state.Final {
+      game.FinalJeopardy.PlayerResponses[player.Name] = "";
+      game.FinalJeopardy.Wagers[player.Name] = 0;
+    }
     if (correct) {
       player.Points += game.state.Cost
       if game.state.Final {
