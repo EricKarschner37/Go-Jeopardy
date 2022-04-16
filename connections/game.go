@@ -90,8 +90,8 @@ func (game *Game) evaluateFinalResponses() {
     game.state.Name = "clue"
     game.state.Response = fmt.Sprintf("%s's response: %s\nCorrect response: %s", player, game.FinalJeopardy.PlayerResponses[player], game.FinalJeopardy.Response)
     game.state.Cost = game.FinalJeopardy.Wagers[player]
-    game.state.Buzzers_open = false
-    game.sendState()
+    game.state.Buzzers_open = true
+    game.Buzz(game.state.Players[player])
   }
 }
 
