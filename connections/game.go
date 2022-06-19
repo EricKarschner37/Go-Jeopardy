@@ -189,6 +189,11 @@ func (game *Game) Reveal(row int, col int) {
   game.state.Buzzers_open = false
   game.state.Response = round.Responses[row][col]
   game.state.Clue = round.Clues[row][col]
+  if (game.state.Double) {
+    game.state.Category = game.SingleJeopardy.Categories[col]
+  } else {
+    game.state.Category = game.SingleJeopardy.Categories[col]
+  }
   game.sendState()
 }
 

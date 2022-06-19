@@ -23,6 +23,7 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
     err = conn.ReadJSON(&resp)
     if err != nil {
       fmt.Println(err)
+      game.Board = nil;
       return
     }
 
