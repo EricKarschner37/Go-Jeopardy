@@ -248,6 +248,9 @@ func (game *Game) ResponseCorrect(correct bool) {
 func (game *Game) ChoosePlayer(name string) {
   game.state.Selected_player = name
   game.state.Name = "daily_double"
+  for n, _ := range game.state.Players {
+    game.localState.hasPlayerBuzzed[n] = true
+  }
   game.sendState()
 }
 
