@@ -30,6 +30,7 @@ type Game struct {
   FinalJeopardy *FinalRound
   Mu *sync.Mutex
   state State
+  localState LocalState
 }
 
 
@@ -139,9 +140,10 @@ func (game *Game) Wager(amount int, player string) {
 }
 
 func (game *Game) Buzz(player *Player) {
-  if (game.state.Buzzers_open) {
+  if (game.state.Buzzers_open && !game.localState.hasPlayerBuzzed[player.Name]) {
     game.state.Buzzers_open = false
     game.state.Selected_player = player.Name
+    game.localState.hasPlayerBuzzed[player.Name] = true
 
     fmt.Println("Player buzzed:", player.Name)
 	  game.sendState()
@@ -165,12 +167,19 @@ func (game *Game) AddPlayer(name string, conn *websocket.Conn) *Player {
 	  game,
   }
   game.state.Players[name] = &p
+  game.localState.hasPlayerBuzzed[name] = false;
   game.sendState()
   return &p
 }
 
 func (game *Game) Reveal(row int, col int) {
   fmt.Println("Revealing clue")
+  bitsetKey := 1 << (row*6 + col)
+  if (bitsetKey & game.state.HasClueBeenShownBitset != 0) {
+    // Clue has already been shown
+    return
+  }
+  game.state.HasClueBeenShownBitset = game.state.HasClueBeenShownBitset | bitsetKey
   var round *JeopardyRound
   if (game.state.Double) {
     round = game.DoubleJeopardy
@@ -190,7 +199,7 @@ func (game *Game) Reveal(row int, col int) {
   game.state.Response = round.Responses[row][col]
   game.state.Clue = round.Clues[row][col]
   if (game.state.Double) {
-    game.state.Category = game.SingleJeopardy.Categories[col]
+    game.state.Category = game.DoubleJeopardy.Categories[col]
   } else {
     game.state.Category = game.SingleJeopardy.Categories[col]
   }
@@ -217,13 +226,15 @@ func (game *Game) ResponseCorrect(correct bool) {
       player.Points += game.state.Cost
       if game.state.Final {
         game.evaluateFinalResponses()
+	      return
       } else {
-        game.state.Name = "response"
+	      game.ShowResponse()
       }
     } else {
       player.Points -= game.state.Cost
       if game.state.Final {
         game.evaluateFinalResponses()
+	      return
       } else {
         game.state.Buzzers_open = true
       }
@@ -243,6 +254,7 @@ func (game *Game) ChoosePlayer(name string) {
 func (game *Game) StartDouble() {
   game.state.Double = true
   game.state.Name = "board"
+  game.state.HasClueBeenShownBitset = 0;
   game.SendCategories()
   game.sendState()
 }
@@ -263,8 +275,11 @@ func (game *Game) StartFinal() {
 func (game *Game) ShowResponse() {
   if (!game.state.Buzzers_open) {
     game.state.Name = "response"
+    for n, _ := range game.state.Players {
+      game.localState.hasPlayerBuzzed[n] = false;
+    }
+    game.sendState()
   }
-  game.sendState()
 }
 
 func (game *Game) ShowBoard() {
@@ -365,6 +380,9 @@ func (game *Game) StartGame(num int) {
   game.FinalJeopardy = &FinalRound{}
   game.FinalJeopardy.Wagers = make(map[string]int)
   game.FinalJeopardy.PlayerResponses = make(map[string]string)
+  game.localState = LocalState {
+    make(map[string]bool),
+  }
   game.Mu = &sync.Mutex{}
 
   readRound(fmt.Sprintf("%s/single_clues.csv", dir), fmt.Sprintf("%s/single_responses.csv", dir), game.SingleJeopardy)
@@ -385,6 +403,7 @@ func (game *Game) StartGame(num int) {
     "board",					//name
     false,						//double
     false,            //final
+    0,						    //HasClueBeenShownBitset
   } 
 }
 
@@ -402,6 +421,7 @@ func (game *Game) EndGame() {
   }
 }
 
+// The state that gets sent to clients
 type State struct {
   Message string				`json:"message"`
   Buzzers_open bool				`json:"buzzers_open"`
@@ -414,4 +434,12 @@ type State struct {
   Name string					`json:"name"`
   Double bool					`json:"double"`
   Final bool          `json:"final"`
+  // If the clue at row i, col j has been shown,
+  // then the bit at 2^(i*6+j) is 1
+  HasClueBeenShownBitset int `json:"hasClueBeenShownBitset"`
+}
+
+// State which is used only locally and not sent to clients
+type LocalState struct {
+  hasPlayerBuzzed map[string]bool
 }

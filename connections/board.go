@@ -18,6 +18,7 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
   resp := make(map[string]interface{})
   game.Board = conn
   game.SendCategories()
+  game.sendState()
 
   for {
     err = conn.ReadJSON(&resp)
