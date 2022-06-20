@@ -19,6 +19,7 @@ func (game *Game) AcceptHost(w http.ResponseWriter, r *http.Request) {
   game.Host = conn
 
   game.Mu.Unlock()
+  game.sendState()
 
   resp := make(map[string]interface{})
 
