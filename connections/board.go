@@ -46,6 +46,8 @@ func (game *Game) AcceptBoard(w http.ResponseWriter, r *http.Request) {
       game.ShowBoard()
     case "remove":
       game.RemovePlayer(resp["name"].(string))
+    case "set_player_balance":
+      game.SetPlayerBalance(resp["name"].(string), int(resp["amount"].(float64)))
     }
     game.Mu.Unlock()
   }

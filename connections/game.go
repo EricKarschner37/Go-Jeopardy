@@ -239,9 +239,10 @@ func (game *Game) ResponseCorrect(correct bool) {
         game.state.Buzzers_open = true
       }
     }
-
-    game.state.Selected_player = ""
+  } else {
+    game.state.Buzzers_open = true
   }
+  game.state.Selected_player = ""
   game.sendState()
 }
 
@@ -309,6 +310,13 @@ func (game *Game) SendCategories() {
   categoriesMsg, _ := json.Marshal(categoriesMap)
 
   game.Board.WriteMessage(websocket.TextMessage, []byte(categoriesMsg))
+}
+
+func (game *Game) SetPlayerBalance(name string, balance int) {
+  if player, ok := game.state.Players[name]; ok {
+    player.Points = balance;
+  }
+  game.sendState()
 }
 
 func readFinal(finalFile string, final *FinalRound) {
