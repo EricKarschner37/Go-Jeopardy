@@ -7,6 +7,7 @@ import "encoding/csv"
 import "encoding/json"
 import "github.com/gorilla/websocket"
 import "strings"
+import "time"
 
 type JeopardyRound struct {
   Categories [6]string
@@ -31,6 +32,7 @@ type Game struct {
   Mu *sync.Mutex
   state State
   localState LocalState
+  Created time.Time
 }
 
 
@@ -416,6 +418,8 @@ func (game *Game) StartGame(num int) {
     false,            //final
     0,						    //HasClueBeenShownBitset
   } 
+
+  game.Created = time.Now()
 }
 
 func (game *Game) EndGame() {
